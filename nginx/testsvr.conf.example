@@ -1,0 +1,60 @@
+# Sample nginx config for fronting API Test Server as a reverse proxy.
+# Copy to /etc/nginx/sites-available/testsvr, adjust server_name and TLS
+# paths, then symlink into sites-enabled and reload nginx.
+
+server {
+    listen 80;
+    server_name testsvr.example.com;
+
+    # Test servers regularly receive large/unusual payloads; don't
+    # reject them at the proxy layer.
+    client_max_body_size 50m;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+
+        # Preserve the original request as closely as possible so the
+        # headers the server prints to stdout reflect what the client sent.
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Pass through all methods and bodies unmodified.
+        proxy_pass_request_headers on;
+        proxy_pass_request_body    on;
+
+        # Test clients may be slow or hold connections open; don't time
+        # out prematurely.
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+}
+
+# --- Optional TLS termination ---
+# Uncomment and adjust if you want nginx to terminate TLS in front of
+# API Test Server (it only speaks plain HTTP).
+#
+# server {
+#     listen 443 ssl;
+#     server_name testsvr.example.com;
+#
+#     ssl_certificate     /etc/letsencrypt/live/testsvr.example.com/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/testsvr.example.com/privkey.pem;
+#
+#     client_max_body_size 50m;
+#
+#     location / {
+#         proxy_pass http://127.0.0.1:8080;
+#         proxy_http_version 1.1;
+#         proxy_set_header Host              $host;
+#         proxy_set_header X-Real-IP         $remote_addr;
+#         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+#         proxy_set_header X-Forwarded-Proto $scheme;
+#         proxy_pass_request_headers on;
+#         proxy_pass_request_body    on;
+#         proxy_read_timeout 300s;
+#         proxy_send_timeout 300s;
+#     }
+# }

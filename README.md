@@ -1,4 +1,4 @@
-# TestSvr
+# API Test Server
 
 A lightweight HTTP server for testing systems that generate API calls. It logs every incoming request to stdout in full detail, and returns configurable responses based on URI patterns defined in a JSON config file.
 
@@ -122,13 +122,42 @@ Body:
 
 `Query:` is omitted when there is no query string. `Body:` is omitted when the request has no body.
 
+## Using nginx as a Frontend
+
+API Test Server only speaks plain HTTP and has no TLS support, so put
+nginx in front of it if you need HTTPS, a stable hostname, or to share
+port 80/443 with other services on the same host.
+
+A sample config is provided at [nginx/testsvr.conf.example](nginx/testsvr.conf.example).
+It reverse-proxies all paths and methods straight through to the server
+on `127.0.0.1:8080`, with notes on what each directive is for:
+
+- `client_max_body_size 50m` — test payloads can be large or malformed; don't reject them at the proxy
+- `proxy_set_header X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto` — preserve original client info even though the server will only see nginx's headers on the upstream connection
+- `proxy_pass_request_headers on` / `proxy_pass_request_body on` — forward everything unmodified so the stdout dump reflects the real client request
+- Commented-out `server` block for TLS termination via Let's Encrypt or your own certs
+
+To use it:
+
+```bash
+sudo cp nginx/testsvr.conf.example /etc/nginx/sites-available/testsvr
+# edit server_name (and TLS paths if enabling HTTPS)
+sudo ln -s /etc/nginx/sites-available/testsvr /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Note that any header nginx adds or rewrites (e.g. `Host`) will appear in
+the request dump as nginx sent it, not as the original client sent it —
+`X-Forwarded-*` headers are how you recover the original values.
+
 ## Project Layout
 
 ```
-TestSvr/
-├── main.go       entry point, flag parsing, SIGHUP handler, server start
-├── config.go     Config structs and JSON loading
-├── router.go     wildcard URI matching and route lookup
-├── handler.go    request logging, route dispatch, response writing
-└── config.json   starter config
+API-Test-Server/
+├── main.go                       entry point, flag parsing, SIGHUP handler, server start
+├── config.go                     Config structs and JSON loading
+├── router.go                     wildcard URI matching and route lookup
+├── handler.go                    request logging, route dispatch, response writing
+├── config.json                   starter config
+└── nginx/testsvr.conf.example    sample reverse-proxy config
 ```
