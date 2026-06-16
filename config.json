@@ -1,0 +1,28 @@
+{
+  "port": 8080,
+  "default": {
+    "status": 200,
+    "headers": { "Content-Type": "text/plain" },
+    "body": ""
+  },
+  "routes": [
+    {
+      "uri": "/api/sites/*/create",
+      "method": "*",
+      "status": 200,
+      "headers": { "Content-Type": "application/json" },
+      "body": "{\"success\": true, \"id\": 42}\n"
+    },
+    {
+      "uri": "/health",
+      "status": 200,
+      "body": "OK\n"
+    },
+    {
+      "uri": "/api/*/delete",
+      "method": "*",
+      "status": 403,
+      "body": "Forbidden\n"
+    }
+  ]
+}
